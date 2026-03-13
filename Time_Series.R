@@ -1,4 +1,4 @@
-#LIBRARIES
+#LIBRARIES HUUUUY
 
 library(zoo)
 library(ggplot2)
@@ -13,35 +13,35 @@ library(Metrics)
 ###############################################
 ###############################################
 
-joba <- read.csv('PCU721110721110 (2).csv')
+frame_data <- read.csv('PCU721110721110 (2).csv')
 
-names(joba)[1] <- 'Date'
-names(joba)[2] <- 'Value'
-
-
-joba$Date <- as.yearmon(joba$Date)
+names(frame_data)[1] <- 'Date'
+names(frame_data)[2] <- 'Value'
 
 
-test_set_end <- as.yearmon("May 2020")
-test_set_start <- as.yearmon("Feb 2020")
-
-training_set <- subset(joba, Date < test_set_start)
-test_set <- subset(joba, Date < test_set_start) #as.yearmon("Oct 2019")
+frame_data$Date <- as.yearmon(joba$Date)
 
 
-plot(joba, type = 'l')
+covid_set_end <- as.yearmon("May 2020")
+covid_set_start <- as.yearmon("Feb 2020")
+
+before_lockdown <- subset(frame_data, Date < covid_set_start)
+after_lockdown <- subset(frame_data, Date > covid_set_end)
+
+
+plot(frame_data, type = 'l')
 
 
 ggplot() +
-  geom_line(data = joba, aes(x = Date, y = Value, color = "Covid"), size = 1) +
-  geom_line(data = test_set, aes(x = Date, y = Value, color = "Testing"), size = 1) +
-  geom_line(data = training_set, aes(x = Date, y = Value, color = "Training"), size = 1) +
+  geom_line(data = frame_data, aes(x = Date, y = Value, color = "Lockdown"), size = 1) +
+  geom_line(data = before_lockdown, aes(x = Date, y = Value, color = "Before Lockdown"), size = 1) +
+  geom_line(data = after_lockdown, aes(x = Date, y = Value, color = "After Lockdown"), size = 1) +
   labs(
-    title = "Hotels and Motels - Training and Testing Sets",
+    title = "Hotels and Motels",
     x = "Date",
     y = "Producer Price Index by Industry"
   ) +
-  scale_color_manual(values = c("Covid" = "#12355B", "Testing" = "#D72638", "Training" = "#CFAE00"), name = "Index") +
+  scale_color_manual(values = c("Lockdown" = "#0006BF", "Before Lockdown" = "#D6B304", "After Lockdown" = "#D17600"), name = "Period") +
   theme_minimal() +
   theme(plot.title = element_text(size = 20))
 
@@ -61,7 +61,7 @@ ggplot() +
 
 cut_subdata_start <- as.yearmon("Jan 2012")
 
-subdata_set <- subset(training_set, Date > cut_subdata_start)
+subdata_set <- subset(before_lockdown, Date > cut_subdata_start)
 
 
 
@@ -171,7 +171,7 @@ ggplot() +
     x = "Date",
     y = "Producer Price Index by Industry"
   ) +
-  scale_color_manual(values = c("Testing" = "#D72638", "Training" = "#000ADE",
+  scale_color_manual(values = c("Testing" = "#D72638", "Training" = "#07BCE0",
                                 "TES" = "#85D602", "DES" = "#D67A02", "SES" = "#D6BA02"), name = "Index") +
   theme_minimal() +
   theme(plot.title = element_text(size = 20))
@@ -186,33 +186,39 @@ ggplot() +
 ###############################################
 ###############################################
 
-sub_after <- subset(training_set, Date <= cut_subdata_start)
+without_lockdown <- subset(frame_data, Date > as.yearmon("Oct 2019"))
+
+
+sub_after <- subset(without_lockdown, Date <= cut_subdata_start)
 ts_subdata_set <- ts(subdata_set$Value, frequency = 12)
 
 
 
 
 tes_full <- HoltWinters(ts_subdata_set)
-tes_full_forecast <- forecast(tes_full, h = nrow(test_set))
+tes_full_forecast <- forecast(tes_full, h = nrow(without_lockdown))
 
 final_forecast <- data.frame(
-  Date = test_set$Date,
-  TES = tes_full_forecast$mean
-)
+  Date = without_lockdown$Date,
+  TES = tes_full_forecast$mean,
+  lower95 = tes_full_forecast$lower,
+  upper95 = tes_full_forecast$upper
+  )
 
 
 ggplot() +
-  geom_line(data = joba, aes(x = Date, y = Value, color = "Data"), size = 1) +
+  geom_line(data = frame_data, aes(x = Date, y = Value, color = "Data"), size = 1) +
+  geom_ribbon(data = final_forecast, aes(x = Date, ymin=lower95.95., ymax = upper95.95.),
+              fill="black", alpha=0.5) +
   geom_line(data = final_forecast, aes(x = Date, y = TES, color = "TES"), size = 1) +
   labs(
     title = "Hotels and Motels - Training and Testing Sets",
     x = "Date",
     y = "Producer Price Index by Industry"
   ) +
-  scale_color_manual(values = c("Data" = "#000ADE","TES" = "#D72638"), name = "Index") +
+  scale_color_manual(values = c("Data" = "#D6B304","TES" = "#000ADE"), name = "Index") +
   theme_minimal() +
   theme(plot.title = element_text(size = 20))
-
 
 
 
